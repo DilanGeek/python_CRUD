@@ -1,5 +1,5 @@
 from person import Person
-from connection import Connection
+from pool_cursor import PoolCursor
 from logger_base import logger
 
 
@@ -14,80 +14,55 @@ class PersonDao:
 
     @classmethod
     def select(cls):
-        cursor = Connection.getCursor()
-        logger.debug(cursor.mogrify(cls.__SELECT))
-        cursor.execute(cls.__SELECT)
-        data = cursor.fetchall()
-        persons = []
-        for item in data:
-            person = Person(item[1], item[2], item[0], item[3])
-            persons.append(person)
-        Connection.close()
-        return persons
+        with PoolCursor() as cursor:
+            logger.debug(cursor.mogrify(cls.__SELECT))
+            cursor.execute(cls.__SELECT)
+            data = cursor.fetchall()
+            persons = []
+            for item in data:
+                person = Person(item[0], item[1], item[2], item[3])
+                persons.append(person)
+            return persons
 
     @classmethod
     def insert(cls, person):
-        try:
-            connection = Connection.getConnection()
-            cursor = Connection.getCursor()
+        with PoolCursor() as cursor:
             logger.debug(cursor.mogrify(cls.__INSERT))
             logger.debug(f'Peronsa a insertar => {person}')
             values = (person.get_name(), person.get_lastName(),
                       person.get_email())
             cursor.execute(cls.__INSERT, values)
-            connection.commit()
             return cursor.rowcount
-        except Exception as e:
-            connection.rollback()
-            logger.error(f'Excepcion al insertar persona => {e}')
-        finally:
-            Connection.close()
 
     @classmethod
     def update(cls, person):
-        try:
-            connection = Connection.getConnection()
-            cursor = Connection.getCursor()
+        with PoolCursor() as cursor:
             logger.debug(cursor.mogrify(cls.__UPDATE))
             logger.debug(f'Peronsa a actualizar => {person}')
             values = (person.get_name(), person.get_lastName(),
                       person.get_email(), person.get_id_person())
             cursor.execute(cls.__UPDATE, values)
-            connection.commit()
             return cursor.rowcount
-        except Exception as e:
-            connection.rollback()
-            logger.error(f'Error al actualizar el registro => {e}')
-        finally:
-            Connection.close()
 
     @classmethod
     def delete(cls, person):
-        try:
-            connection = Connection.getConnection()
-            cursor = Connection.getCursor()
+        with PoolCursor() as cursor:
             logger.debug(cursor.mogrify(cls.__DELETE))
             logger.debug(f'Persona a eliminar => {person}')
             values = (person.get_id_person(),)
             cursor.execute(cls.__DELETE, values)
-            connection.commit()
             return cursor.rowcount
-        except Exception as e:
-            connection.rollback()
-            logger.error(f'Error al borrar a la persona => {e}')
-        finally:
-            Connection.close()
 
 
 if __name__ == '__main__':
     # select all
-    # personaDao = PersonDao.select()
-    # for person in personaDao:
-    #     print(person)
-    #     logger.debug(person)
+    personaDao = PersonDao.select()
+    for person in personaDao:
+        print(person)
+        logger.debug(person)
 
     # insert
-    # person = Person(name='Pedro', lastName='Najera', email='pnajera@mail.com')
+    # person = Person(name='Antonio', lastName='Najera', email='pnajera@mail.com')
     # data_insert = PersonDao.insert(person)
     # logger.debug(f'registros insertados => {data_insert}')
 
@@ -97,6 +72,6 @@ if __name__ == '__main__':
     # logger.debug(f'Personas actualizadas: {personas_actualizadas}')
 
     # eliminar un registro existente
-    persona = Person(id_person=17)
-    personas_eliminadas = PersonDao.delete(persona)
-    logger.debug(f'Personas eliminadas: {personas_eliminadas}')
+    # persona = Person(id_person=1)
+    # personas_eliminadas = PersonDao.delete(persona)
+    # logger.debug(f'Personas eliminadas: {personas_eliminadas}')
